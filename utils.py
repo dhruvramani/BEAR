@@ -30,36 +30,36 @@ _ENV_URL_DICT = {
 }
 
 def get_keys(h5file):
-    keys = []
+	keys = []
     def visitor(name, item):
-        if isinstance(item, h5py.Dataset):
-            keys.append(name)
-    h5file.visititems(visitor)
-    return keys
+    	if isinstance(item, h5py.Dataset):
+        	keys.append(name)
+	h5file.visititems(visitor)
+	return keys
 
 def get_dataset(env_name, h5path=None):
 	global _ENV_URL_DICT
 	dataset_url = _ENV_URL_DICT[env_name.lower()]
-    if h5path is None:
-        h5path = "./{}".format(dataset_url.split("/")[-1])
-        if dataset_url is None:
-            raise ValueError("Offline env not configured with a dataset URL.")
+	if h5path is None:
+		h5path = "./{}".format(dataset_url.split("/")[-1])
+		if dataset_url is None:
+			raise ValueError("Offline env not configured with a dataset URL.")
 
-        if not os.path.exists(h5path):
-            print('Downloading dataset:', dataset_url, 'to', h5path)
-            urllib.request.urlretrieve(dataset_url, h5path)
+		if not os.path.exists(h5path):
+			print('Downloading dataset:', dataset_url, 'to', h5path)
+			urllib.request.urlretrieve(dataset_url, h5path)
 
-        if not os.path.exists(h5path):
-            raise IOError("Failed to download dataset from %s" % dataset_url)
+		if not os.path.exists(h5path):
+			raise IOError("Failed to download dataset from %s" % dataset_url)
         
-    dataset_file = h5py.File(h5path, 'r')
-    data_dict = {k: dataset_file[k][:] for k in get_keys(dataset_file)}
-    dataset_file.close()
+	dataset_file = h5py.File(h5path, 'r')
+	data_dict = {k: dataset_file[k][:] for k in get_keys(dataset_file)}
+	dataset_file.close()
 
-    # Run a few quick sanity checks
-    for key in ['observations', 'actions', 'rewards', 'terminals']:
-        assert key in data_dict, 'Dataset is missing key %s' % key
-    return data_dict
+	# Run a few quick sanity checks
+	for key in ['observations', 'actions', 'rewards', 'terminals']:
+		assert key in data_dict, 'Dataset is missing key %s' % key
+	return data_dict
 
 class ReplayBuffer(object):
 	def __init__(self, state_dim=10, action_dim=4):
