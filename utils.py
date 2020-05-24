@@ -31,9 +31,9 @@ _ENV_URL_DICT = {
 
 def get_keys(h5file):
 	keys = []
-    def visitor(name, item):
-    	if isinstance(item, h5py.Dataset):
-        	keys.append(name)
+	def visitor(name, item):
+		if isinstance(item, h5py.Dataset):
+			keys.append(name)
 	h5file.visititems(visitor)
 	return keys
 
