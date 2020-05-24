@@ -10,9 +10,9 @@ import algos
 import TD3
 from logger import logger, setup_logger
 from logger import create_stats_ordered_dict
-import point_mass
+#import point_mass
 
-import d4rl
+#import d4rl
 
 def load_hdf5_mujoco(dataset, replay_buffer):
     """
