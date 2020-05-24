@@ -1,6 +1,65 @@
+import os
+import h5py
+import urllib.request
 import numpy as np
 import pickle
 import gzip
+
+# TODO : @dhruvramani - add non-mujoco based tasks
+_ENV_URL_DICT = {
+	'hopper-medium-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/hopper_medium.hdf5',
+	'halfcheetah-medium-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/halfcheetah_medium.hdf5',
+	'walker2d-medium-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/walker2d_medium.hdf5',
+	'hopper-expert-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/hopper_expert.hdf5',
+	'halfcheetah-expert-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/halfcheetah_expert.hdf5',
+	'walker2d-expert-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/walker2d_expert.hdf5',
+	'hopper-random-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/hopper_random.hdf5',
+	'halfcheetah-random-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/halfcheetah_random.hdf5',
+	'walker2d-random-v0' : 'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/walker2d_random.hdf5', 
+	'hopper-mixed-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/hopper_mixed.hdf5',
+	'walker2d-mixed-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/walker_mixed.hdf5',
+	'halfcheetah-mixed-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/halfcheetah_mixed.hdf5',
+	'walker2d-medium-expert-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/walker2d_medium_expert.hdf5',
+	'halfcheetah-medium-expert-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/halfcheetah_medium_expert.hdf5',
+	'hopper-medium-expert-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/hopper_medium_expert.hdf5',
+	'ant-medium-expert-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/ant_medium_expert.hdf5',
+	'ant-mixed-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/ant_mixed.hdf5',
+	'ant-medium-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/ant_medium.hdf5',
+	'ant-random-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/ant_random.hdf5',
+	'ant-expert-v0' :'http://rail.eecs.berkeley.edu/datasets/offline_rl/gym_mujoco/ant_expert.hdf5',
+}
+
+def get_keys(h5file):
+    keys = []
+    def visitor(name, item):
+        if isinstance(item, h5py.Dataset):
+            keys.append(name)
+    h5file.visititems(visitor)
+    return keys
+
+def get_dataset(env_name, h5path=None):
+	global _ENV_URL_DICT
+	dataset_url = _ENV_URL_DICT[env_name.lower()]
+    if h5path is None:
+        h5path = "./{}".format(dataset_url.split("/")[-1])
+        if dataset_url is None:
+            raise ValueError("Offline env not configured with a dataset URL.")
+
+        if not os.path.exists(h5path):
+            print('Downloading dataset:', dataset_url, 'to', h5path)
+            urllib.request.urlretrieve(dataset_url, h5path)
+
+        if not os.path.exists(h5path):
+            raise IOError("Failed to download dataset from %s" % dataset_url)
+        
+    dataset_file = h5py.File(h5path, 'r')
+    data_dict = {k: dataset_file[k][:] for k in get_keys(dataset_file)}
+    dataset_file.close()
+
+    # Run a few quick sanity checks
+    for key in ['observations', 'actions', 'rewards', 'terminals']:
+        assert key in data_dict, 'Dataset is missing key %s' % key
+    return data_dict
 
 class ReplayBuffer(object):
 	def __init__(self, state_dim=10, action_dim=4):

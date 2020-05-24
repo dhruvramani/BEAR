@@ -112,27 +112,27 @@ def evaluate_policy_discounted(policy, eval_episodes=10):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_name", default="hopper-medium-v0")                          # OpenAI gym environment name
-    parser.add_argument("--seed", default=0, type=int)                                      # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--eval_freq", default=5e3, type=float)                     # How often (time steps) we evaluate
-    parser.add_argument("--max_timesteps", default=1e6, type=float)         # Max time steps to run environment for
-    parser.add_argument("--version", default='0', type=str)                 # Basically whether to do min(Q), max(Q), mean(Q) over multiple Q networks for policy updates
-    parser.add_argument("--lamda", default=0.5, type=float)                 # Unused parameter -- please ignore 
-    parser.add_argument("--threshold", default=0.05, type=float)            # Unused parameter -- please ignore
-    parser.add_argument('--use_bootstrap', default=False, type=bool)        # Whether to use bootstrapped ensembles or plain ensembles
-    parser.add_argument('--algo_name', default="BEAR", type=str)         # Which algo to run (see the options below in the main function)
-    parser.add_argument('--mode', default='hardcoded', type=str)            # Whether to do automatic lagrange dual descent or manually tune coefficient of the MMD loss (prefered "auto")
-    parser.add_argument('--num_samples_match', default=10, type=int)        # number of samples to do matching in MMD
-    parser.add_argument('--mmd_sigma', default=20.0, type=float)            # The bandwidth of the MMD kernel parameter
-    parser.add_argument('--kernel_type', default='laplacian', type=str)     # kernel type for MMD ("laplacian" or "gaussian")
-    parser.add_argument('--lagrange_thresh', default=10.0, type=float)      # What is the threshold for the lagrange multiplier
-    parser.add_argument('--distance_type', default="MMD", type=str)         # Distance type ("KL" or "MMD")
-    parser.add_argument('--log_dir', default='./data_hopper/', type=str)    # Logging directory
-    parser.add_argument('--use_ensemble_variance', default='False', type=str)       # Whether to use ensemble variance or not
+    parser.add_argument("--env_name", default="hopper-medium-v0")            # D4RL gym environment name
+    parser.add_argument("--seed", default=0, type=int)                        # Sets Gym, PyTorch and Numpy seeds
+    parser.add_argument("--eval_freq", default=5e3, type=float)               # How often (time steps) we evaluate
+    parser.add_argument("--max_timesteps", default=1e6, type=float)           # Max time steps to run environment for
+    parser.add_argument("--version", default='0', type=str)                   # Basically whether to do min(Q), max(Q), mean(Q) over multiple Q networks for policy updates
+    parser.add_argument("--lamda", default=0.5, type=float)                   # Unused parameter -- please ignore 
+    parser.add_argument("--threshold", default=0.05, type=float)              # Unused parameter -- please ignore
+    parser.add_argument('--use_bootstrap', default=False, type=bool)          # Whether to use bootstrapped ensembles or plain ensembles
+    parser.add_argument('--algo_name', default="BEAR", type=str)              # Which algo to run (see the options below in the main function)
+    parser.add_argument('--mode', default='hardcoded', type=str)              # Whether to do automatic lagrange dual descent or manually tune coefficient of the MMD loss (prefered "auto")
+    parser.add_argument('--num_samples_match', default=10, type=int)          # number of samples to do matching in MMD
+    parser.add_argument('--mmd_sigma', default=20.0, type=float)              # The bandwidth of the MMD kernel parameter
+    parser.add_argument('--kernel_type', default='laplacian', type=str)       # kernel type for MMD ("laplacian" or "gaussian")
+    parser.add_argument('--lagrange_thresh', default=10.0, type=float)        # What is the threshold for the lagrange multiplier
+    parser.add_argument('--distance_type', default="MMD", type=str)           # Distance type ("KL" or "MMD")
+    parser.add_argument('--log_dir', default='./data_hopper/', type=str)      # Logging directory
+    parser.add_argument('--use_ensemble_variance', default='False', type=str) # Whether to use ensemble variance or not
     parser.add_argument('--use_behaviour_policy', default='False', type=str)       
     parser.add_argument('--cloning', default="False", type=str)
     parser.add_argument('--num_random', default=10, type=int)
-    parser.add_argument('--margin_threshold', default=10, type=float)		# for DQfD baseline
+    parser.add_argument('--margin_threshold', default=10, type=float)		  # for DQfD baseline
     args = parser.parse_args()
 
     # Use any random seed, and not the user provided seed
@@ -149,17 +149,26 @@ if __name__ == "__main__":
     if not os.path.exists("./results"):
         os.makedirs("./results")
 
-    env = gym.make(args.env_name)
-
-    env.seed(seed)
+    # NOTE : @dhruvramani - commeneted this for colabs
+    # env = gym.make(args.env_name)
+    # env.seed(seed)
+    
     torch.manual_seed(seed)
     np.random.seed(seed)
+
+    # Load buffer
+    dataset = utils.get_dataset(env_name=args.env_name)
+    replay_buffer = utils.ReplayBuffer()
+    if 'maze' in args.env_name or 'human' in args.env_name or 'cloned' in args.env_name:
+        load_hdf5_others(dataset, replay_buffer)
+    else:
+        load_hdf5_mujoco(dataset, replay_buffer)
     
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0] 
-    max_action = float(env.action_space.high[0])
-    print (state_dim, action_dim)
-    print ('Max action: ', max_action)
+    state_dim = dataset["observations"].shape[1:][0]
+    action_dim = dataset["actions"].shape[1:][0] 
+    max_action = float(dataset["actions"].max(axis=0)[0])
+    print(state_dim, action_dim)
+    print('Max action: ', max_action)
 
     variant = dict(
         algorithm=algo_name,
@@ -218,13 +227,6 @@ if __name__ == "__main__":
             use_kl=(True if args.distance_type == "KL" else False),
             use_ensemble=(False if args.use_ensemble_variance == "False" else True),
             kernel_type=args.kernel_type)
-
-    # Load buffer
-    replay_buffer = utils.ReplayBuffer()
-    if 'maze' in args.env_name or 'human' in args.env_name or 'cloned' in args.env_name:
-        load_hdf5_others(env.unwrapped.get_dataset(), replay_buffer)
-    else:
-        load_hdf5_mujoco(env.unwrapped.get_dataset(), replay_buffer)
     
     evaluations = []
 
@@ -235,14 +237,15 @@ if __name__ == "__main__":
     while training_iters < args.max_timesteps: 
         pol_vals = policy.train(replay_buffer, iterations=int(args.eval_freq))
 
-        ret_eval, var_ret, median_ret = evaluate_policy(policy)
-        evaluations.append(ret_eval)
-        np.save("./results/" + file_name, evaluations)
+        # NOTE : @dhruvramani - commeneted this for colabs
+        # ret_eval, var_ret, median_ret = evaluate_policy(policy)
+        # evaluations.append(ret_eval)
+        # np.save("./results/" + file_name, evaluations)
 
         training_iters += args.eval_freq
         print ("Training iterations: " + str(training_iters))
         logger.record_tabular('Training Epochs', int(training_iters // int(args.eval_freq)))
-        logger.record_tabular('AverageReturn', ret_eval)
-        logger.record_tabular('VarianceReturn', var_ret)
-        logger.record_tabular('MedianReturn', median_ret)
+        # logger.record_tabular('AverageReturn', ret_eval)
+        # logger.record_tabular('VarianceReturn', var_ret)
+        # logger.record_tabular('MedianReturn', median_ret)
         logger.dump_tabular()
