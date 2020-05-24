@@ -170,6 +170,8 @@ if __name__ == "__main__":
     print(state_dim, action_dim)
     print('Max action: ', max_action)
 
+    del dataset
+
     variant = dict(
         algorithm=algo_name,
         version=args.version,
