@@ -112,7 +112,7 @@ def evaluate_policy_discounted(policy, eval_episodes=10):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_name", default="hopper-medium-v0")            # D4RL gym environment name
+    parser.add_argument("--env_name", default="hopper-medium-v0")             # D4RL gym environment name
     parser.add_argument("--seed", default=0, type=int)                        # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--eval_freq", default=5e3, type=float)               # How often (time steps) we evaluate
     parser.add_argument("--max_timesteps", default=1e6, type=float)           # Max time steps to run environment for
@@ -251,3 +251,4 @@ if __name__ == "__main__":
         # logger.record_tabular('VarianceReturn', var_ret)
         # logger.record_tabular('MedianReturn', median_ret)
         logger.dump_tabular()
+        print("Iter done")
